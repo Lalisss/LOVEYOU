@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Love You Heart</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
+  body { display: grid; place-items: center; }
+  #ui { perspective: 1200px; width: 100vmin; height: 100vmin; position: relative; }
+  /* fixed 3D angle - the heart itself does not swing */
+  #scene {
+    position: absolute; inset: 0;
+    transform-style: preserve-3d;
+    transform: rotateX(14deg) rotateY(-26deg);
+  }
+  #ui .pin { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; }
+  #ui .love_word {
+    display: block;
+    color: #ea80b0;
+    font-family: "Courier New", monospace;
+    font-size: var(--fs, 1.4rem);
+    line-height: 1;
+    text-shadow: 0 0 10px #fff;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    transform: rotateY(90deg) translateX(-50%) translateY(-50%);
+  }
+  #ui .love_horizontal {
+    animation: horizontal 10000ms infinite alternate ease-in-out;
+    animation-delay: calc(var(--i) * -300ms);
+  }
+  @keyframes horizontal {
+    from { translate: 0 0 calc(var(--amp) * -1); }
+    to   { translate: 0 0 var(--amp); }
+  }
+</style>
+</head>
+<body>
+<div id="ui"><div id="scene"></div></div>
+<script>
+  const ui = document.getElementById('ui'), scene = document.getElementById('scene');
+  const size = Math.min(innerWidth, innerHeight);
+  const S = size * 0.82 / 32;               // heart ~32 units wide -> 82% of screen
+  const fs = Math.max(11, size * 0.034);    // font size scales with the heart
+  ui.style.setProperty('--fs', fs + 'px');
+
+  const pt = t => [
+    16 * Math.pow(Math.sin(t), 3) * S,
+    -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) * S
+  ];
+  // sample the outline once, with cumulative arc length
+  const M = 2000, pts = [], cum = [0];
+  for (let k = 0; k <= M; k++) {
+    pts.push(pt(k / M * Math.PI * 2));
+    if (k) cum.push(cum[k-1] + Math.hypot(pts[k][0]-pts[k-1][0], pts[k][1]-pts[k-1][1]));
+  }
+  const total = cum[M], N = Math.round(total / (fs * 1.05));
+  const at = s => {                      // point at arc length s (wraps around)
+    s = ((s % total) + total) % total;
+    let lo = 0, hi = M;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < s) lo = mid + 1; else hi = mid; }
+    return pts[lo];
+  };
+  const pins = [];
+  for (let n = 0; n < N; n++) {
+    const pin = document.createElement('div');
+    pin.className = 'pin';
+    const w = document.createElement('span');
+    w.className = 'love_word';
+    w.textContent = 'love you';
+    pin.appendChild(w);
+    scene.appendChild(pin);
+    pins.push(pin);
+  }
+  const SPEED = size * 0.12;             // px per second, words flow around the heart
+  function frame(ms) {
+    const off = ms / 1000 * SPEED;
+    for (let n = 0; n < N; n++) {
+      const [x, y] = at(n / N * total + off);
+      pins[n].style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
